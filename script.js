@@ -24,6 +24,14 @@ const loadingDiv = document.getElementById('loading');
 const swapBtn = document.getElementById('swap-currencies');
 const rateInfoDiv = document.getElementById('rate-info');
 
+// Number formatting function
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6
+    }).format(num);
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -47,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Fetch supported currencies from the API
+// Fetch supported currencies
 async function fetchSupportedCurrencies() {
     try {
         const url = `${BASE_URL}${API_KEY}/codes`;
@@ -70,7 +78,7 @@ async function fetchSupportedCurrencies() {
     }
 }
 
-// Populate the currency dropdowns
+// Populate dropdowns
 function populateCurrencyDropdowns(currencies) {
     fromCurrencySelect.innerHTML = '';
     toCurrencySelect.innerHTML = '';
@@ -88,7 +96,7 @@ function populateCurrencyDropdowns(currencies) {
     });
 }
 
-// Set default currencies
+// Set defaults
 function setDefaultCurrencies(currencies) {
     if (currencies.includes('USD')) {
         fromCurrencySelect.value = 'USD';
@@ -98,16 +106,20 @@ function setDefaultCurrencies(currencies) {
     }
 }
 
-// Convert button click handler
+// Conversion handler
 convertBtn.addEventListener('click', async () => {
     try {
         const amount = parseFloat(amountInput.value);
         const fromCurrency = fromCurrencySelect.value;
         const toCurrency = toCurrencySelect.value;
         
-        // Validate input
-        if (isNaN(amount) || amount <= 0) {
-            showError('Please enter a valid amount greater than 0');
+        if (isNaN(amount) {
+            showError('Please enter a valid number');
+            return;
+        }
+        
+        if (amount <= 0) {
+            showError('Amount must be greater than 0');
             return;
         }
         
@@ -122,15 +134,15 @@ convertBtn.addEventListener('click', async () => {
         
         if (fromCurrency === toCurrency) {
             showResult(amount, fromCurrency, toCurrency, amount);
-            showRateInfo(`1 ${fromCurrency} = 1 ${toCurrency}`, 'Current rate');
+            showRateInfo(fromCurrency, toCurrency, 1, 'Current rate');
             return;
         }
         
         const { rate, time } = await getConversionRate(fromCurrency, toCurrency);
-        const convertedAmount = (amount * rate).toFixed(2);
+        const convertedAmount = amount * rate;
         
         showResult(amount, fromCurrency, toCurrency, convertedAmount);
-        showRateInfo(`1 ${fromCurrency} = ${rate.toFixed(6)} ${toCurrency}`, time);
+        showRateInfo(fromCurrency, toCurrency, rate, time);
     } catch (error) {
         showError(`Conversion failed: ${error.message}`);
     } finally {
@@ -138,7 +150,7 @@ convertBtn.addEventListener('click', async () => {
     }
 });
 
-// Get conversion rate from API
+// Get exchange rate
 async function getConversionRate(from, to) {
     const url = `${BASE_URL}${API_KEY}/pair/${from}/${to}`;
     const response = await fetch(url);
@@ -166,20 +178,29 @@ swapBtn.addEventListener('click', () => {
     toCurrencySelect.value = temp;
 });
 
-// Helper functions for UI updates
-function showLoading(show) {
-    loadingDiv.style.display = show ? 'block' : 'none';
-    convertBtn.disabled = show;
-}
-
+// Display result
 function showResult(amount, fromCurrency, toCurrency, convertedAmount) {
     const fromSymbol = currencySymbols[fromCurrency] || fromCurrency;
     const toSymbol = currencySymbols[toCurrency] || toCurrency;
     
     resultDiv.innerHTML = `
-        <p>${fromSymbol}${amount} ${fromCurrency} = ${toSymbol}${convertedAmount} ${toCurrency}</p>
+        <p>${fromSymbol}${formatNumber(amount)} ${fromCurrency} = ${toSymbol}${formatNumber(convertedAmount)} ${toCurrency}</p>
     `;
     resultDiv.style.display = 'block';
+}
+
+// Display rate info
+function showRateInfo(fromCurrency, toCurrency, rate, time) {
+    rateInfoDiv.innerHTML = `
+        <p>1 ${fromCurrency} = ${formatNumber(rate)} ${toCurrency}</p>
+        <p class="update-time">Rates updated: ${time}</p>
+    `;
+}
+
+// UI helpers
+function showLoading(show) {
+    loadingDiv.style.display = show ? 'block' : 'none';
+    convertBtn.disabled = show;
 }
 
 function hideResult() {
@@ -193,11 +214,4 @@ function showError(message) {
 
 function hideError() {
     errorDiv.style.display = 'none';
-}
-
-function showRateInfo(rateText, time) {
-    rateInfoDiv.innerHTML = `
-        <p>${rateText}</p>
-        <p class="update-time">Rates updated: ${time}</p>
-    `;
 }
