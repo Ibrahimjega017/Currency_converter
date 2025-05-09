@@ -1,3 +1,36 @@
+// Add this currency symbol map at the top of your script.js
+const currencySymbols = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  NGN: '₦',
+  JPY: '¥',
+  CAD: '$'
+  // Add more as needed
+};
+
+// Modify your showResult function:
+function showResult(amount, fromCurrency, toCurrency, convertedAmount) {
+  const fromSymbol = currencySymbols[fromCurrency] || fromCurrency;
+  const toSymbol = currencySymbols[toCurrency] || toCurrency;
+  
+  resultDiv.innerHTML = `
+    <p>${fromSymbol}${amount} ${fromCurrency} = ${toSymbol}${convertedAmount} ${toCurrency}</p>
+  `;
+  resultDiv.style.display = 'block';
+}
+
+// Update the convert button click handler:
+convertBtn.addEventListener('click', async () => {
+  // ... existing code ...
+  if (fromCurrency === toCurrency) {
+    showResult(amount, fromCurrency, toCurrency, amount);
+    // ... rest of code ...
+  }
+  // ... existing code ...
+  showResult(amount, fromCurrency, toCurrency, convertedAmount);
+});
+
 // Configuration
 const API_KEY = 'e8b800ab4a3ce1dfe9b34a5d'; // Replace with your actual API key
 const BASE_URL = 'https://v6.exchangerate-api.com/v6/';
