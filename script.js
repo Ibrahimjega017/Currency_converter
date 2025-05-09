@@ -1,39 +1,17 @@
-// Add this currency symbol map at the top of your script.js
-const currencySymbols = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  NGN: '₦',
-  JPY: '¥',
-  CAD: '$'
-  // Add more as needed
-};
-
-// Modify your showResult function:
-function showResult(amount, fromCurrency, toCurrency, convertedAmount) {
-  const fromSymbol = currencySymbols[fromCurrency] || fromCurrency;
-  const toSymbol = currencySymbols[toCurrency] || toCurrency;
-  
-  resultDiv.innerHTML = `
-    <p>${fromSymbol}${amount} ${fromCurrency} = ${toSymbol}${convertedAmount} ${toCurrency}</p>
-  `;
-  resultDiv.style.display = 'block';
-}
-
-// Update the convert button click handler:
-convertBtn.addEventListener('click', async () => {
-  // ... existing code ...
-  if (fromCurrency === toCurrency) {
-    showResult(amount, fromCurrency, toCurrency, amount);
-    // ... rest of code ...
-  }
-  // ... existing code ...
-  showResult(amount, fromCurrency, toCurrency, convertedAmount);
-});
-
 // Configuration
-const API_KEY = 'e8b800ab4a3ce1dfe9b34a5d'; // Replace with your actual API key
+const API_KEY = 'YOUR_EXCHANGE_RATE_API_KEY'; // Replace with your actual API key
 const BASE_URL = 'https://v6.exchangerate-api.com/v6/';
+const DEFAULT_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'NGN', 'CAD'];
+
+// Currency symbols map
+const currencySymbols = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    NGN: '₦',
+    JPY: '¥',
+    CAD: '$'
+};
 
 // DOM Elements
 const amountInput = document.getElementById('amount');
@@ -46,23 +24,24 @@ const loadingDiv = document.getElementById('loading');
 const swapBtn = document.getElementById('swap-currencies');
 const rateInfoDiv = document.getElementById('rate-info');
 
-// Supported currencies (will be fetched from API)
-let currencies = [];
-
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         showLoading(true);
-        currencies = await fetchSupportedCurrencies();
+        const currencies = await fetchSupportedCurrencies();
         
         if (currencies.length > 0) {
-            populateCurrencyDropdowns();
-            setDefaultCurrencies();
+            populateCurrencyDropdowns(currencies);
+            setDefaultCurrencies(currencies);
         } else {
-            showError('No currencies available. Please try again later.');
+            showError('No currencies available. Using default currencies.');
+            populateCurrencyDropdowns(DEFAULT_CURRENCIES);
+            setDefaultCurrencies(DEFAULT_CURRENCIES);
         }
     } catch (error) {
         showError(`Failed to initialize: ${error.message}`);
+        populateCurrencyDropdowns(DEFAULT_CURRENCIES);
+        setDefaultCurrencies(DEFAULT_CURRENCIES);
     } finally {
         showLoading(false);
     }
@@ -70,24 +49,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Fetch supported currencies from the API
 async function fetchSupportedCurrencies() {
-    const url = `${BASE_URL}${API_KEY}/codes`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-        throw new Error('Failed to fetch currency codes');
-    }
-    
-    const data = await response.json();
-    
-    if (data.result === 'success') {
-        return data.supported_codes.map(code => code[0]);
-    } else {
-        throw new Error(data['error-type'] || 'Unknown error from API');
+    try {
+        const url = `${BASE_URL}${API_KEY}/codes`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch currency codes');
+        }
+        
+        const data = await response.json();
+        
+        if (data.result === 'success') {
+            return data.supported_codes.map(code => code[0]);
+        } else {
+            throw new Error(data['error-type'] || 'Unknown error from API');
+        }
+    } catch (error) {
+        console.error('Error fetching currencies:', error);
+        return DEFAULT_CURRENCIES;
     }
 }
 
 // Populate the currency dropdowns
-function populateCurrencyDropdowns() {
+function populateCurrencyDropdowns(currencies) {
     fromCurrencySelect.innerHTML = '';
     toCurrencySelect.innerHTML = '';
     
@@ -105,12 +89,12 @@ function populateCurrencyDropdowns() {
 }
 
 // Set default currencies
-function setDefaultCurrencies() {
+function setDefaultCurrencies(currencies) {
     if (currencies.includes('USD')) {
         fromCurrencySelect.value = 'USD';
     }
-    if (currencies.includes('EUR')) {
-        toCurrencySelect.value = 'EUR';
+    if (currencies.includes('NGN')) {
+        toCurrencySelect.value = 'NGN';
     }
 }
 
@@ -137,16 +121,16 @@ convertBtn.addEventListener('click', async () => {
         hideError();
         
         if (fromCurrency === toCurrency) {
-            showResult(`${amount} ${fromCurrency} = ${amount} ${toCurrency}`);
-            showRateInfo(`1 ${fromCurrency} = 1 ${toCurrency}`);
+            showResult(amount, fromCurrency, toCurrency, amount);
+            showRateInfo(`1 ${fromCurrency} = 1 ${toCurrency}`, 'Current rate');
             return;
         }
         
-        const conversionRate = await getConversionRate(fromCurrency, toCurrency);
-        const convertedAmount = (amount * conversionRate).toFixed(2);
+        const { rate, time } = await getConversionRate(fromCurrency, toCurrency);
+        const convertedAmount = (amount * rate).toFixed(2);
         
-        showResult(`${amount} ${fromCurrency} = ${convertedAmount} ${toCurrency}`);
-        showRateInfo(`1 ${fromCurrency} = ${conversionRate.toFixed(6)} ${toCurrency}`);
+        showResult(amount, fromCurrency, toCurrency, convertedAmount);
+        showRateInfo(`1 ${fromCurrency} = ${rate.toFixed(6)} ${toCurrency}`, time);
     } catch (error) {
         showError(`Conversion failed: ${error.message}`);
     } finally {
@@ -166,7 +150,10 @@ async function getConversionRate(from, to) {
     const data = await response.json();
     
     if (data.result === 'success') {
-        return data.conversion_rate;
+        return {
+            rate: data.conversion_rate,
+            time: data.time_last_update_utc || new Date().toUTCString()
+        };
     } else {
         throw new Error(data['error-type'] || 'Unknown error from API');
     }
@@ -185,8 +172,13 @@ function showLoading(show) {
     convertBtn.disabled = show;
 }
 
-function showResult(message) {
-    resultDiv.textContent = message;
+function showResult(amount, fromCurrency, toCurrency, convertedAmount) {
+    const fromSymbol = currencySymbols[fromCurrency] || fromCurrency;
+    const toSymbol = currencySymbols[toCurrency] || toCurrency;
+    
+    resultDiv.innerHTML = `
+        <p>${fromSymbol}${amount} ${fromCurrency} = ${toSymbol}${convertedAmount} ${toCurrency}</p>
+    `;
     resultDiv.style.display = 'block';
 }
 
@@ -203,6 +195,9 @@ function hideError() {
     errorDiv.style.display = 'none';
 }
 
-function showRateInfo(message) {
-    rateInfoDiv.textContent = message;
+function showRateInfo(rateText, time) {
+    rateInfoDiv.innerHTML = `
+        <p>${rateText}</p>
+        <p class="update-time">Rates updated: ${time}</p>
+    `;
 }
