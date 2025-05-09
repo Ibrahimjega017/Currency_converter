@@ -1,5 +1,5 @@
 // Configuration
-const API_KEY = 'YOUR_EXCHANGE_RATE_API_KEY'; // Replace with your actual API key
+const API_KEY = 'e8b800ab4a3ce1dfe9b34a5d'; // Replace with your actual API key
 const BASE_URL = 'https://v6.exchangerate-api.com/v6/';
 const DEFAULT_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'NGN', 'CAD'];
 
